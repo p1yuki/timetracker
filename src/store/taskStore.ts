@@ -31,6 +31,9 @@ interface TaskStore {
 
   // New actions
   carryOverTasksIfNeeded: () => void;
+
+  // 完了済みタスクのステータスリセット
+  resetTaskStatus: (id: string) => void;
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -374,6 +377,25 @@ export const useTaskStore = create<TaskStore>()(
             tasks: [...state.tasks, ...newTasks]
           }));
         }
+      },
+
+      // 完了済みタスクのステータスリセット
+      resetTaskStatus: (id) => {
+        set((state) => ({
+          tasks: state.tasks.map((task) =>
+            task.id === id
+              ? {
+                  ...task,
+                  status: 'pending',
+                  startedAt: undefined,
+                  completedAt: undefined,
+                  pausedAt: undefined,
+                  totalPausedTime: 0,
+                  totalTime: 0,
+                }
+              : task
+          ),
+        }));
       },
     }),
     {

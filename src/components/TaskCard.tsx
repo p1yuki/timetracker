@@ -381,9 +381,16 @@ export const TaskCard = ({ task }: TaskCardProps) => {
             {/* 実績時間の表示 */}
             <span className="text-blue-600">実績: {actualDurationMinutes}分{timeDifferenceText}</span>
             {pausedMinutes > 0 && (
-              <span className="text-yellow-600">（中断{pausedMinutes}分）</span>
+              <span className="text-yellow-600">（中断合計{pausedMinutes}分）</span>
             )}
             <div className="text-green-600 font-medium flex items-center gap-1">✅ 完了</div>
+            <button
+              onClick={() => useTaskStore.getState().resetTaskStatus(task.id)}
+              className="ml-2 text-gray-400 hover:text-blue-500 p-1 rounded-xl hover:bg-blue-50 transition-colors border border-blue-200 text-xs"
+              title="ステータスをリセット"
+            >
+              リセット
+            </button>
           </div>
         )}
         <button onClick={() => deleteTask(task.id)} className="text-gray-400 hover:text-red-500 p-1 rounded-xl hover:bg-red-50 transition-colors" title="削除">
