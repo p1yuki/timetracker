@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Task, TaskStats, GenreStats } from '../types';
 
-const DEFAULT_GENRES = ['クライアントワーク', '写真現像'];
+const DEFAULT_GENRES = ['クライアントワーク', '写真現像', 'ルーチン'];
 
 interface TaskStore {
   tasks: Task[];
@@ -11,7 +11,7 @@ interface TaskStore {
   activeTab: 'tasks' | 'analytics';
   
   // Actions
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'status'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'status'>, targetDate?: Date) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   startTask: (id: string) => void;
@@ -28,6 +28,9 @@ interface TaskStore {
   getGenreStats: (date: Date) => GenreStats[];
   getWeeklyStats: () => GenreStats[];
   getAllGenres: () => string[];
+
+  // New actions
+  carryOverTasksIfNeeded: () => void;
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -38,11 +41,11 @@ export const useTaskStore = create<TaskStore>()(
       selectedDate: new Date(),
       activeTab: 'tasks',
 
-      addTask: (taskData) => {
+      addTask: (taskData, targetDate) => {
         const newTask: Task = {
           ...taskData,
           id: crypto.randomUUID(),
-          createdAt: new Date(),
+          createdAt: targetDate || new Date(),
           status: 'pending',
         };
         
@@ -148,7 +151,7 @@ export const useTaskStore = create<TaskStore>()(
                   status: 'completed',
                   completedAt: now,
                   totalTime: finalTotalTime,
-                  startedAt: undefined
+                  // startedAtは保持する（開始時間を消さない）
                 }
               : t
           ),
@@ -174,6 +177,7 @@ export const useTaskStore = create<TaskStore>()(
 
       setSelectedDate: (date) => {
         set({ selectedDate: date });
+        get().carryOverTasksIfNeeded();
       },
 
       setActiveTab: (tab) => {
@@ -257,6 +261,79 @@ export const useTaskStore = create<TaskStore>()(
         const { customGenres } = get();
         return [...DEFAULT_GENRES, ...customGenres];
       },
+
+      carryOverTasksIfNeeded: () => {
+        const { tasks, selectedDate } = get();
+        // 今日の日付
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        // 前日の日付
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+
+        // 前日分の未完了タスク（繰越済みでないもの）
+        const carryOverTargets = tasks.filter(task => {
+          const created = new Date(task.createdAt);
+          created.setHours(0,0,0,0);
+          return (
+            (task.status === 'pending' || task.status === 'in-progress') &&
+            !task.isCarriedOver &&
+            created.getFullYear() === yesterday.getFullYear() &&
+            created.getMonth() === yesterday.getMonth() &&
+            created.getDate() === yesterday.getDate()
+          );
+        });
+
+        // ルーチンタスクの自動追加
+        const routineTasks = tasks.filter(task => {
+          const created = new Date(task.createdAt);
+          created.setHours(0,0,0,0);
+          return (
+            task.genre === 'ルーチン' &&
+            created.getFullYear() === yesterday.getFullYear() &&
+            created.getMonth() === yesterday.getMonth() &&
+            created.getDate() === yesterday.getDate()
+          );
+        });
+
+        const newTasks: Task[] = [];
+
+        // 繰越タスクを追加
+        if (carryOverTargets.length > 0) {
+          const carryOverTasks = carryOverTargets.map(task => ({
+            ...task,
+            id: crypto.randomUUID(),
+            createdAt: today,
+            startedAt: undefined,
+            completedAt: undefined,
+            totalTime: 0,
+            status: 'pending' as Task['status'],
+            isCarriedOver: true,
+          }));
+          newTasks.push(...carryOverTasks);
+        }
+
+        // ルーチンタスクを追加
+        if (routineTasks.length > 0) {
+          const routineTasksForToday = routineTasks.map(task => ({
+            ...task,
+            id: crypto.randomUUID(),
+            createdAt: today,
+            startedAt: undefined,
+            completedAt: undefined,
+            totalTime: 0,
+            status: 'pending' as Task['status'],
+            isCarriedOver: false,
+          }));
+          newTasks.push(...routineTasksForToday);
+        }
+
+        if (newTasks.length > 0) {
+          set((state) => ({
+            tasks: [...state.tasks, ...newTasks]
+          }));
+        }
+      },
     }),
     {
       name: 'task-store',
@@ -281,6 +358,11 @@ export const useTaskStore = create<TaskStore>()(
             startedAt: task.startedAt ? new Date(task.startedAt) : undefined,
             completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
           }));
+          // ストア復元時にも繰越処理を実行
+          setTimeout(() => {
+            // ZustandのonRehydrateStorageは非同期なのでsetTimeoutで呼ぶ
+            useTaskStore.getState().carryOverTasksIfNeeded();
+          }, 0);
         }
       },
     }

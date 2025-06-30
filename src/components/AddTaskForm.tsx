@@ -1,19 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTaskStore } from '../store/taskStore';
+
+// 現在時刻と1時間後の時刻を取得する関数
+const getDefaultTimes = () => {
+  const now = new Date();
+  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+  
+  const formatTime = (date: Date) => {
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  };
+  
+  return {
+    startTime: formatTime(now),
+    endTime: formatTime(oneHourLater),
+  };
+};
+
+// 日付をフォーマットする関数
+const formatDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export const AddTaskForm = () => {
   const { addTask, getAllGenres } = useTaskStore();
   const [formData, setFormData] = useState({
     title: '',
-    genre: 'クライアントワーク',
+    genre: 'ルーチン',
     customGenre: '',
     startTime: '09:00',
     endTime: '10:00',
     memo: '',
+    targetDate: formatDate(new Date()), // 今日の日付をデフォルトに
   });
   const [isCustomGenre, setIsCustomGenre] = useState(false);
 
   const allGenres = getAllGenres();
+
+  // コンポーネントマウント時にデフォルト時間を設定
+  useEffect(() => {
+    const defaultTimes = getDefaultTimes();
+    setFormData(prev => ({
+      ...prev,
+      startTime: defaultTimes.startTime,
+      endTime: defaultTimes.endTime,
+    }));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,22 +56,28 @@ export const AddTaskForm = () => {
     const finalGenre = isCustomGenre ? formData.customGenre : formData.genre;
     if (!finalGenre.trim()) return;
 
+    // 選択された日付をDateオブジェクトに変換
+    const targetDate = new Date(formData.targetDate);
+    targetDate.setHours(0, 0, 0, 0); // 時刻を00:00:00に設定
+
     addTask({
       title: formData.title,
       genre: finalGenre,
       startTime: formData.startTime,
       endTime: formData.endTime,
       memo: formData.memo,
-    });
+    }, targetDate);
 
-    // フォームをリセット
+    // フォームをリセット（デフォルト時間を再設定）
+    const defaultTimes = getDefaultTimes();
     setFormData({
       title: '',
-      genre: 'クライアントワーク',
+      genre: 'ルーチン',
       customGenre: '',
-      startTime: '09:00',
-      endTime: '10:00',
+      startTime: defaultTimes.startTime,
+      endTime: defaultTimes.endTime,
       memo: '',
+      targetDate: formatDate(new Date()), // 今日の日付をデフォルトに
     });
     setIsCustomGenre(false);
   };
@@ -45,7 +85,15 @@ export const AddTaskForm = () => {
   return (
     <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 mb-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">新しいタスクを追加</h3>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <p className="text-sm text-blue-800">
+          💡 <strong>ルーチン</strong>ジャンルのタスクは、翌日以降も自動で追加されます。毎日の習慣や定期的な作業にご利用ください。
+        </p>
+        <p className="text-sm text-blue-800 mt-2">
+          📅 <strong>日付選択</strong>で未来の日付を選択すると、その日のタスクとして追加されます。今日以外の日付を選択した場合、その日付のタスク一覧に表示されます。
+        </p>
+      </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">タスク名</label>
           <input
@@ -105,6 +153,17 @@ export const AddTaskForm = () => {
               required={isCustomGenre}
             />
           )}
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">日付</label>
+          <input
+            type="date"
+            value={formData.targetDate}
+            onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+            className="form-input py-2"
+            required
+          />
         </div>
         
         <div>

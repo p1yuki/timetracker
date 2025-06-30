@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Play, Pause, Square, Trash2 } from 'lucide-react';
+import { Play, Pause, Square, Trash2, Edit2 } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { Task } from '../types';
 
@@ -14,9 +14,22 @@ const formatTime = (seconds: number): string => {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
+const formatDateTime = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${year}/${month}/${day} ${hours}:${minutes}`;
+};
+
 export const TaskCard = ({ task }: TaskCardProps) => {
-  const { startTask, pauseTask, completeTask, deleteTask, updateElapsedTime } = useTaskStore();
+  const { startTask, pauseTask, completeTask, deleteTask, updateElapsedTime, updateTask, getAllGenres } = useTaskStore();
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isEditingGenre, setIsEditingGenre] = useState(false);
+  const [editingGenre, setEditingGenre] = useState(task.genre);
+
+  const allGenres = getAllGenres();
 
   // リアルタイム経過時間の更新
   useEffect(() => {
@@ -37,6 +50,14 @@ export const TaskCard = ({ task }: TaskCardProps) => {
     return () => { if (interval) clearInterval(interval); };
   }, [task.status, task.startedAt, task.id, updateElapsedTime]);
 
+  // ジャンル編集の保存
+  const handleGenreSave = () => {
+    if (editingGenre.trim() && editingGenre !== task.genre) {
+      updateTask(task.id, { genre: editingGenre });
+    }
+    setIsEditingGenre(false);
+  };
+
   // 1行レイアウト用スタイル
   const getStatusColor = (status: Task['status']) => {
     switch (status) {
@@ -52,6 +73,7 @@ export const TaskCard = ({ task }: TaskCardProps) => {
     const colors = {
       'クライアントワーク': 'bg-blue-600',
       '写真現像': 'bg-green-600',
+      'ルーチン': 'bg-purple-600',
     };
     return colors[genre as keyof typeof colors] || 'bg-gray-500';
   };
@@ -64,16 +86,63 @@ export const TaskCard = ({ task }: TaskCardProps) => {
       style={{fontSize: '0.97rem'}}>
       {/* タイトル */}
       <div className="font-semibold text-gray-900 truncate max-w-[18vw] md:max-w-[200px]">{task.title}</div>
-      {/* ジャンル */}
-      <span className={`${getGenreColor(task.genre)} text-white px-2 py-0.5 rounded-full text-xs font-medium shrink-0`}>{task.genre}</span>
+      
+      {/* ジャンル（編集可能） */}
+      {isEditingGenre ? (
+        <div className="flex items-center gap-1">
+          <select
+            value={editingGenre}
+            onChange={(e) => setEditingGenre(e.target.value)}
+            className="text-xs border rounded px-1 py-0.5"
+            onBlur={handleGenreSave}
+            onKeyDown={(e) => e.key === 'Enter' && handleGenreSave()}
+            autoFocus
+          >
+            {allGenres.map((genre) => (
+              <option key={genre} value={genre}>
+                {genre}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <span className={`${getGenreColor(task.genre)} text-white px-2 py-0.5 rounded-full text-xs font-medium shrink-0`}>
+            {task.genre}
+          </span>
+          <button
+            onClick={() => setIsEditingGenre(true)}
+            className="text-gray-400 hover:text-gray-600 p-0.5 rounded"
+            title="ジャンルを編集"
+          >
+            <Edit2 size={10} />
+          </button>
+        </div>
+      )}
+      
       {/* 繰越タグ */}
       {task.isCarriedOver && (
         <span className="bg-yellow-400 text-white px-2 py-0.5 rounded-full text-xs font-medium ml-1 shrink-0">繰越</span>
       )}
+      
       {/* 予定時間 */}
       <span className="text-gray-500 text-xs shrink-0">{task.startTime}~{task.endTime}</span>
+      
+      {/* 実際の開始・終了時間 */}
+      {task.startedAt && (
+        <span className="text-blue-600 text-xs shrink-0">
+          開始: {formatDateTime(new Date(task.startedAt))}
+        </span>
+      )}
+      {task.completedAt && (
+        <span className="text-green-600 text-xs shrink-0">
+          終了: {formatDateTime(new Date(task.completedAt))}
+        </span>
+      )}
+      
       {/* メモ（省略表示） */}
       {task.memo && <span className="text-gray-400 text-xs truncate max-w-[10vw] md:max-w-[120px]">{task.memo}</span>}
+      
       {/* 操作ボタン */}
       <div className="flex gap-1 ml-auto shrink-0">
         {task.status === 'pending' && (
@@ -98,6 +167,7 @@ export const TaskCard = ({ task }: TaskCardProps) => {
           <Trash2 size={13} />
         </button>
       </div>
+      
       {/* 経過時間 */}
       <div className={`px-3 py-1 rounded-2xl font-medium text-xs ml-2 shrink-0 ${task.status === 'in-progress' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}
         style={{minWidth: '70px', textAlign: 'center'}}>
