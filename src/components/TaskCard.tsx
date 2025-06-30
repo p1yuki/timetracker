@@ -117,6 +117,14 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   
   // 実際の作業時間（分）
   const actualDurationMinutes = secondsToMinutes(displayTime);
+  
+  // 予定時間との差分を計算
+  const timeDifference = actualDurationMinutes - task.scheduledDuration;
+  const timeDifferenceText = timeDifference > 0 
+    ? `(+${timeDifference})` 
+    : timeDifference < 0 
+      ? `(${timeDifference})` 
+      : '';
 
   return (
     <div className={`task-card flex items-center gap-2 px-3 py-2 min-h-0 ${getStatusColor(task.status)}`}
@@ -164,8 +172,11 @@ export const TaskCard = ({ task }: TaskCardProps) => {
           )}
         </div>
       </div>
-      {/* 予定時間（左揃え） */}
-      <span className="text-gray-500 text-xs shrink-0 min-w-[80px] text-left">{task.scheduledStartTime}~{endTime}</span>
+      {/* 予定時間（左揃え、より目立つ表示） */}
+      <div className="flex flex-col items-start shrink-0 min-w-[80px]">
+        <span className="text-gray-600 text-xs font-medium">{task.scheduledStartTime}~{endTime}</span>
+        <span className="text-gray-500 text-xs">予定: {task.scheduledDuration}分</span>
+      </div>
       
       {/* 実際の開始・終了時間 */}
       {task.startedAt && (
@@ -198,7 +209,11 @@ export const TaskCard = ({ task }: TaskCardProps) => {
           </>
         )}
         {task.status === 'completed' && (
-          <div className="text-green-600 font-medium flex items-center gap-1 text-xs">✅ 完了</div>
+          <div className="flex items-center gap-2 text-xs">
+            {/* 実績時間の表示 */}
+            <span className="text-blue-600">実績: {actualDurationMinutes}分{timeDifferenceText}</span>
+            <div className="text-green-600 font-medium flex items-center gap-1">✅ 完了</div>
+          </div>
         )}
         <button onClick={() => deleteTask(task.id)} className="text-gray-400 hover:text-red-500 p-1 rounded-xl hover:bg-red-50 transition-colors" title="削除">
           <Trash2 size={13} />
