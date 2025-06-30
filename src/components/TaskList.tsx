@@ -19,6 +19,51 @@ export const TaskList = () => {
     return 0;
   });
 
+  // 時間帯別にタスクを分類
+  const categorizeTasks = (tasks: typeof sortedTasks) => {
+    const morning = tasks.filter(task => {
+      const hour = parseInt(task.scheduledStartTime.split(':')[0]);
+      return hour >= 4 && hour < 8;
+    });
+    
+    const forenoon = tasks.filter(task => {
+      const hour = parseInt(task.scheduledStartTime.split(':')[0]);
+      return hour >= 8 && hour < 12;
+    });
+    
+    const afternoon = tasks.filter(task => {
+      const hour = parseInt(task.scheduledStartTime.split(':')[0]);
+      return hour >= 12 && hour < 18;
+    });
+    
+    const evening = tasks.filter(task => {
+      const hour = parseInt(task.scheduledStartTime.split(':')[0]);
+      return hour >= 18 || hour < 4;
+    });
+
+    return { morning, forenoon, afternoon, evening };
+  };
+
+  const { morning, forenoon, afternoon, evening } = categorizeTasks(sortedTasks);
+
+  const renderTimeSection = (title: string, tasks: typeof sortedTasks, bgColor: string, textColor: string) => {
+    if (tasks.length === 0) return null;
+    
+    return (
+      <div className={`${bgColor} rounded-lg p-4 mb-4`}>
+        <h4 className={`text-sm font-semibold ${textColor} mb-3 flex items-center`}>
+          <span className="mr-2">⏰</span>
+          {title} ({tasks.length}件)
+        </h4>
+        <div className="space-y-2">
+          {tasks.map((task) => (
+            <TaskCard key={task.id} task={task} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
@@ -36,10 +81,11 @@ export const TaskList = () => {
           <p className="text-gray-500 text-sm">新しいタスクを追加して作業を始めましょう！</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {sortedTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
+        <div>
+          {renderTimeSection('🌅 朝 (4:00-8:00)', morning, 'bg-blue-50', 'text-blue-800')}
+          {renderTimeSection('☀️ 午前 (8:00-12:00)', forenoon, 'bg-yellow-50', 'text-yellow-800')}
+          {renderTimeSection('🌤️ 午後 (12:00-18:00)', afternoon, 'bg-orange-50', 'text-orange-800')}
+          {renderTimeSection('🌙 夜 (18:00-4:00)', evening, 'bg-purple-50', 'text-purple-800')}
         </div>
       )}
     </div>

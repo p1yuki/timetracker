@@ -4,10 +4,12 @@ export interface Task {
   genre: string;
   scheduledStartTime: string; // 開始予定時間
   scheduledDuration: number; // 作業予定時間（分）
-  status: 'pending' | 'in-progress' | 'completed';
+  status: 'pending' | 'in-progress' | 'paused' | 'completed';
   createdAt: Date;
   startedAt?: Date;
   completedAt?: Date;
+  pausedAt?: Date; // 中断開始時間
+  totalPausedTime?: number; // 累積中断時間（秒）
   totalTime?: number; // 秒単位
   memo?: string;
   isCarriedOver?: boolean; // 翌日繰越タスクかどうか

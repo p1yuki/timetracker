@@ -86,12 +86,29 @@ export const useTaskStore = create<TaskStore>()(
         let newStartedAt = now;
         let accumulatedTime = task.totalTime || 0;
 
-        // 中断状態から再開する場合、累積時間を保持
-        if (task.status === 'pending' && task.startedAt) {
-          const previousElapsed = Math.floor((now.getTime() - task.startedAt.getTime()) / 1000);
-          accumulatedTime += previousElapsed;
+        // 中断状態から再開する場合、累積中断時間を計算
+        if (task.status === 'paused' && task.pausedAt) {
+          const pausedAt = new Date(task.pausedAt);
+          const pausedDuration = Math.floor((now.getTime() - pausedAt.getTime()) / 1000);
+          const newTotalPausedTime = (task.totalPausedTime || 0) + pausedDuration;
+          
+          set((state) => ({
+            tasks: state.tasks.map((t) =>
+              t.id === id
+                ? { 
+                    ...t, 
+                    status: 'in-progress', 
+                    startedAt: task.startedAt, // 元の開始時間を保持
+                    totalPausedTime: newTotalPausedTime,
+                    pausedAt: undefined // 中断時間をクリア
+                  }
+                : t
+            ),
+          }));
+          return;
         }
 
+        // 通常の開始処理
         set((state) => ({
           tasks: state.tasks.map((t) =>
             t.id === id
@@ -120,9 +137,10 @@ export const useTaskStore = create<TaskStore>()(
             t.id === id
               ? { 
                   ...t, 
-                  status: 'pending',
+                  status: 'paused',
                   totalTime: newTotalTime,
-                  startedAt: undefined // 開始時刻をクリア
+                  pausedAt: now, // 中断開始時間を記録
+                  // startedAtは保持する（開始時間を消さない）
                 }
               : t
           ),
@@ -141,6 +159,29 @@ export const useTaskStore = create<TaskStore>()(
           const startedAt = new Date(task.startedAt);
           const elapsed = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
           finalTotalTime += elapsed;
+        }
+
+        // 中断中の場合は中断時間を累積
+        if (task.status === 'paused' && task.pausedAt) {
+          const pausedAt = new Date(task.pausedAt);
+          const pausedDuration = Math.floor((now.getTime() - pausedAt.getTime()) / 1000);
+          const newTotalPausedTime = (task.totalPausedTime || 0) + pausedDuration;
+          
+          set((state) => ({
+            tasks: state.tasks.map((t) =>
+              t.id === id
+                ? {
+                    ...t,
+                    status: 'completed',
+                    completedAt: now,
+                    totalTime: finalTotalTime,
+                    totalPausedTime: newTotalPausedTime,
+                    pausedAt: undefined
+                  }
+                : t
+            ),
+          }));
+          return;
         }
 
         set((state) => ({

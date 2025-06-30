@@ -56,6 +56,10 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   const [editingDuration, setEditingDuration] = useState(task.scheduledDuration);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(task.title);
+  const [isEditingActualStart, setIsEditingActualStart] = useState(false);
+  const [editingActualStart, setEditingActualStart] = useState(task.startedAt ? formatDateTime(new Date(task.startedAt)) : '');
+  const [isEditingActualEnd, setIsEditingActualEnd] = useState(false);
+  const [editingActualEnd, setEditingActualEnd] = useState(task.completedAt ? formatDateTime(new Date(task.completedAt)) : '');
 
   const allGenres = getAllGenres();
 
@@ -105,6 +109,40 @@ export const TaskCard = ({ task }: TaskCardProps) => {
     setIsEditingTitle(false);
   };
 
+  // 実際の開始時間編集の保存
+  const handleActualStartSave = () => {
+    if (editingActualStart.trim() && editingActualStart !== (task.startedAt ? formatDateTime(new Date(task.startedAt)) : '')) {
+      try {
+        // "YYYY/MM/DD HH:MM" 形式をDateオブジェクトに変換
+        const [datePart, timePart] = editingActualStart.split(' ');
+        const [year, month, day] = datePart.split('/').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const newStartDate = new Date(year, month - 1, day, hours, minutes);
+        updateTask(task.id, { startedAt: newStartDate });
+      } catch (error) {
+        console.error('Invalid date format:', error);
+      }
+    }
+    setIsEditingActualStart(false);
+  };
+
+  // 実際の終了時間編集の保存
+  const handleActualEndSave = () => {
+    if (editingActualEnd.trim() && editingActualEnd !== (task.completedAt ? formatDateTime(new Date(task.completedAt)) : '')) {
+      try {
+        // "YYYY/MM/DD HH:MM" 形式をDateオブジェクトに変換
+        const [datePart, timePart] = editingActualEnd.split(' ');
+        const [year, month, day] = datePart.split('/').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const newEndDate = new Date(year, month - 1, day, hours, minutes);
+        updateTask(task.id, { completedAt: newEndDate });
+      } catch (error) {
+        console.error('Invalid date format:', error);
+      }
+    }
+    setIsEditingActualEnd(false);
+  };
+
   // 1行レイアウト用スタイル
   const getStatusColor = (status: Task['status']) => {
     switch (status) {
@@ -112,6 +150,8 @@ export const TaskCard = ({ task }: TaskCardProps) => {
         return 'border-gray-300 bg-gray-200 text-gray-500';
       case 'in-progress':
         return 'border-orange-200 bg-orange-50/30';
+      case 'paused':
+        return 'border-yellow-200 bg-yellow-50/30';
       default:
         return 'border-gray-100';
     }
@@ -139,8 +179,9 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   // 終了予定時間を計算
   const endTime = calculateEndTime(task.scheduledStartTime, task.scheduledDuration);
   
-  // 実際の作業時間（分）
-  const actualDurationMinutes = secondsToMinutes(displayTime);
+  // 実際の作業時間（分）- 中断時間を除外
+  const actualWorkTime = displayTime - (task.totalPausedTime || 0);
+  const actualDurationMinutes = secondsToMinutes(actualWorkTime);
   
   // 予定時間との差分を計算
   const timeDifference = actualDurationMinutes - task.scheduledDuration;
@@ -149,6 +190,9 @@ export const TaskCard = ({ task }: TaskCardProps) => {
     : timeDifference < 0 
       ? `(${timeDifference})` 
       : '';
+
+  // 中断時間（分）
+  const pausedMinutes = secondsToMinutes(task.totalPausedTime || 0);
 
   return (
     <div className={`task-card flex items-center gap-2 px-3 py-2 min-h-0 ${getStatusColor(task.status)}`}
@@ -256,14 +300,52 @@ export const TaskCard = ({ task }: TaskCardProps) => {
       
       {/* 実際の開始・終了時間 */}
       {task.startedAt && (
-        <span className="text-blue-600 text-xs shrink-0">
-          開始: {formatDateTime(new Date(task.startedAt))}
-        </span>
+        <div className="text-blue-600 text-xs shrink-0">
+          {isEditingActualStart ? (
+            <input
+              type="text"
+              value={editingActualStart}
+              onChange={(e) => setEditingActualStart(e.target.value)}
+              className="text-blue-600 text-xs border rounded px-1 py-0.5 w-32"
+              placeholder="YYYY/MM/DD HH:MM"
+              onBlur={handleActualStartSave}
+              onKeyDown={(e) => e.key === 'Enter' && handleActualStartSave()}
+              autoFocus
+            />
+          ) : (
+            <span
+              className="cursor-pointer hover:bg-blue-50 rounded px-1 py-0.5 transition-colors"
+              onClick={() => setIsEditingActualStart(true)}
+              title="クリックして編集"
+            >
+              開始: {formatDateTime(new Date(task.startedAt))}
+            </span>
+          )}
+        </div>
       )}
       {task.completedAt && (
-        <span className="text-green-600 text-xs shrink-0">
-          終了: {formatDateTime(new Date(task.completedAt))}
-        </span>
+        <div className="text-green-600 text-xs shrink-0">
+          {isEditingActualEnd ? (
+            <input
+              type="text"
+              value={editingActualEnd}
+              onChange={(e) => setEditingActualEnd(e.target.value)}
+              className="text-green-600 text-xs border rounded px-1 py-0.5 w-32"
+              placeholder="YYYY/MM/DD HH:MM"
+              onBlur={handleActualEndSave}
+              onKeyDown={(e) => e.key === 'Enter' && handleActualEndSave()}
+              autoFocus
+            />
+          ) : (
+            <span
+              className="cursor-pointer hover:bg-green-50 rounded px-1 py-0.5 transition-colors"
+              onClick={() => setIsEditingActualEnd(true)}
+              title="クリックして編集"
+            >
+              終了: {formatDateTime(new Date(task.completedAt))}
+            </span>
+          )}
+        </div>
       )}
       {/* メモ（省略表示） */}
       {task.memo && <span className="text-gray-400 text-xs truncate max-w-[10vw] md:max-w-[120px]">{task.memo}</span>}
@@ -284,10 +366,23 @@ export const TaskCard = ({ task }: TaskCardProps) => {
             </button>
           </>
         )}
+        {task.status === 'paused' && (
+          <>
+            <button onClick={() => startTask(task.id)} className="btn-primary flex items-center gap-1 py-1 px-3 text-xs">
+              <Play size={13} />再開
+            </button>
+            <button onClick={() => completeTask(task.id)} className="btn-success flex items-center gap-1 py-1 px-3 text-xs">
+              <Square size={13} />終了
+            </button>
+          </>
+        )}
         {task.status === 'completed' && (
           <div className="flex items-center gap-2 text-xs">
             {/* 実績時間の表示 */}
             <span className="text-blue-600">実績: {actualDurationMinutes}分{timeDifferenceText}</span>
+            {pausedMinutes > 0 && (
+              <span className="text-yellow-600">（中断{pausedMinutes}分）</span>
+            )}
             <div className="text-green-600 font-medium flex items-center gap-1">✅ 完了</div>
           </div>
         )}
@@ -296,10 +391,17 @@ export const TaskCard = ({ task }: TaskCardProps) => {
         </button>
       </div>
       {/* 経過時間 */}
-      <div className={`px-3 py-1 rounded-2xl font-medium text-xs ml-2 shrink-0 ${task.status === 'in-progress' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}
+      <div className={`px-3 py-1 rounded-2xl font-medium text-xs ml-2 shrink-0 ${
+        task.status === 'in-progress' 
+          ? 'bg-orange-100 text-orange-700 border border-orange-200' 
+          : task.status === 'paused'
+            ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+            : 'bg-gray-100 text-gray-700 border border-gray-200'
+      }`}
         style={{minWidth: '70px', textAlign: 'center'}}>
         {formatTime(displayTime)}
         {task.status === 'in-progress' && (<span className="ml-1">⏱️</span>)}
+        {task.status === 'paused' && (<span className="ml-1">⏸️</span>)}
       </div>
     </div>
   );
