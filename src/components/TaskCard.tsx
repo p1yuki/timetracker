@@ -23,6 +23,29 @@ const formatDateTime = (date: Date): string => {
   return `${year}/${month}/${day} ${hours}:${minutes}`;
 };
 
+// 開始時間と作業時間から終了時間を計算する関数
+const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const startDate = new Date();
+  startDate.setHours(hours, minutes, 0, 0);
+  
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
+  return `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+};
+
+// 秒を分に変換する関数
+const secondsToMinutes = (seconds: number): number => {
+  return Math.round(seconds / 60);
+};
+
+// タイトルの長さに応じてフォントサイズを変える関数を追加
+const getTitleFontSize = (title: string) => {
+  const len = Array.from(title).length;
+  if (len <= 10) return "text-base"; // 基本サイズ（日本語5～10文字想定）
+  if (len <= 20) return "text-sm";
+  return "text-xs";
+};
+
 export const TaskCard = ({ task }: TaskCardProps) => {
   const { startTask, pauseTask, completeTask, deleteTask, updateElapsedTime, updateTask, getAllGenres } = useTaskStore();
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -62,7 +85,7 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   const getStatusColor = (status: Task['status']) => {
     switch (status) {
       case 'completed':
-        return 'border-gray-200 bg-gray-50';
+        return 'border-gray-300 bg-gray-200 text-gray-500';
       case 'in-progress':
         return 'border-orange-200 bg-orange-50/30';
       default:
@@ -77,56 +100,72 @@ export const TaskCard = ({ task }: TaskCardProps) => {
     };
     return colors[genre as keyof typeof colors] || 'bg-gray-500';
   };
+  const getGenreBgColor = (genre: string) => {
+    const colors = {
+      'クライアントワーク': 'bg-blue-800',
+      '写真現像': 'bg-green-800',
+      'ルーチン': 'bg-purple-800',
+    };
+    return colors[genre as keyof typeof colors] || 'bg-gray-800';
+  };
   const displayTime = task.status === 'in-progress' 
     ? (task.totalTime || 0) + elapsedTime
     : (task.totalTime || 0);
 
+  // 終了予定時間を計算
+  const endTime = calculateEndTime(task.scheduledStartTime, task.scheduledDuration);
+  
+  // 実際の作業時間（分）
+  const actualDurationMinutes = secondsToMinutes(displayTime);
+
   return (
     <div className={`task-card flex items-center gap-2 px-3 py-2 min-h-0 ${getStatusColor(task.status)}`}
       style={{fontSize: '0.97rem'}}>
-      {/* タイトル */}
-      <div className="font-semibold text-gray-900 truncate max-w-[18vw] md:max-w-[200px]">{task.title}</div>
-      
-      {/* ジャンル（編集可能） */}
-      {isEditingGenre ? (
-        <div className="flex items-center gap-1">
-          <select
-            value={editingGenre}
-            onChange={(e) => setEditingGenre(e.target.value)}
-            className="text-xs border rounded px-1 py-0.5"
-            onBlur={handleGenreSave}
-            onKeyDown={(e) => e.key === 'Enter' && handleGenreSave()}
-            autoFocus
-          >
-            {allGenres.map((genre) => (
-              <option key={genre} value={genre}>
-                {genre}
-              </option>
-            ))}
-          </select>
+      {/* タイトル＋ジャンル（固定幅、ジャンルバッジ右端揃え） */}
+      <div className="flex items-center min-w-0 w-[300px] max-w-[400px]" style={{flexShrink: 1}}>
+        <span
+          className={`font-semibold text-gray-900 ${getTitleFontSize(task.title)} overflow-hidden text-ellipsis whitespace-nowrap flex-1`}
+          style={{ minWidth: '60px', marginRight: '8px' }}
+          title={task.title}
+        >
+          {task.title}
+        </span>
+        <div className="flex items-center justify-end shrink-0">
+          {isEditingGenre ? (
+            <select
+              value={editingGenre}
+              onChange={(e) => setEditingGenre(e.target.value)}
+              className="text-xs border rounded px-1 py-0.5 ml-0"
+              onBlur={handleGenreSave}
+              onKeyDown={(e) => e.key === 'Enter' && handleGenreSave()}
+            >
+              {allGenres.map((genre) => (
+                <option key={genre} value={genre}>
+                  {genre}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span
+              className={`inline-block rounded px-2 py-0.5 text-xs font-bold ml-0 ${getGenreColor(task.genre)}`}
+              style={{
+                color: 'white',
+                backgroundColor: getGenreBgColor(task.genre),
+                opacity: 1,
+                filter: 'none',
+              }}
+              onClick={() => setIsEditingGenre(true)}
+            >
+              {task.genre}
+            </span>
+          )}
+          {task.isCarriedOver && (
+            <span className="bg-yellow-400 text-white px-2 py-0.5 rounded-full text-xs font-medium ml-1 shrink-0">繰越</span>
+          )}
         </div>
-      ) : (
-        <div className="flex items-center gap-1">
-          <span className={`${getGenreColor(task.genre)} text-white px-2 py-0.5 rounded-full text-xs font-medium shrink-0`}>
-            {task.genre}
-          </span>
-          <button
-            onClick={() => setIsEditingGenre(true)}
-            className="text-gray-400 hover:text-gray-600 p-0.5 rounded"
-            title="ジャンルを編集"
-          >
-            <Edit2 size={10} />
-          </button>
-        </div>
-      )}
-      
-      {/* 繰越タグ */}
-      {task.isCarriedOver && (
-        <span className="bg-yellow-400 text-white px-2 py-0.5 rounded-full text-xs font-medium ml-1 shrink-0">繰越</span>
-      )}
-      
-      {/* 予定時間 */}
-      <span className="text-gray-500 text-xs shrink-0">{task.startTime}~{task.endTime}</span>
+      </div>
+      {/* 予定時間（左揃え） */}
+      <span className="text-gray-500 text-xs shrink-0 min-w-[80px] text-left">{task.scheduledStartTime}~{endTime}</span>
       
       {/* 実際の開始・終了時間 */}
       {task.startedAt && (
@@ -139,10 +178,8 @@ export const TaskCard = ({ task }: TaskCardProps) => {
           終了: {formatDateTime(new Date(task.completedAt))}
         </span>
       )}
-      
       {/* メモ（省略表示） */}
       {task.memo && <span className="text-gray-400 text-xs truncate max-w-[10vw] md:max-w-[120px]">{task.memo}</span>}
-      
       {/* 操作ボタン */}
       <div className="flex gap-1 ml-auto shrink-0">
         {task.status === 'pending' && (
@@ -167,7 +204,6 @@ export const TaskCard = ({ task }: TaskCardProps) => {
           <Trash2 size={13} />
         </button>
       </div>
-      
       {/* 経過時間 */}
       <div className={`px-3 py-1 rounded-2xl font-medium text-xs ml-2 shrink-0 ${task.status === 'in-progress' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}
         style={{minWidth: '70px', textAlign: 'center'}}>

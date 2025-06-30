@@ -11,9 +11,19 @@ const getDefaultTimes = () => {
   };
   
   return {
-    startTime: formatTime(now),
-    endTime: formatTime(oneHourLater),
+    scheduledStartTime: formatTime(now),
+    scheduledDuration: 60, // デフォルト60分
   };
+};
+
+// 開始時間と作業時間から終了時間を計算する関数
+const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const startDate = new Date();
+  startDate.setHours(hours, minutes, 0, 0);
+  
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
+  return `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
 };
 
 // 日付をフォーマットする関数
@@ -30,8 +40,8 @@ export const AddTaskForm = () => {
     title: '',
     genre: 'ルーチン',
     customGenre: '',
-    startTime: '09:00',
-    endTime: '10:00',
+    scheduledStartTime: '09:00',
+    scheduledDuration: 60,
     memo: '',
     targetDate: formatDate(new Date()), // 今日の日付をデフォルトに
   });
@@ -44,8 +54,8 @@ export const AddTaskForm = () => {
     const defaultTimes = getDefaultTimes();
     setFormData(prev => ({
       ...prev,
-      startTime: defaultTimes.startTime,
-      endTime: defaultTimes.endTime,
+      scheduledStartTime: defaultTimes.scheduledStartTime,
+      scheduledDuration: defaultTimes.scheduledDuration,
     }));
   }, []);
 
@@ -63,8 +73,8 @@ export const AddTaskForm = () => {
     addTask({
       title: formData.title,
       genre: finalGenre,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
+      scheduledStartTime: formData.scheduledStartTime,
+      scheduledDuration: formData.scheduledDuration,
       memo: formData.memo,
     }, targetDate);
 
@@ -74,13 +84,16 @@ export const AddTaskForm = () => {
       title: '',
       genre: 'ルーチン',
       customGenre: '',
-      startTime: defaultTimes.startTime,
-      endTime: defaultTimes.endTime,
+      scheduledStartTime: defaultTimes.scheduledStartTime,
+      scheduledDuration: defaultTimes.scheduledDuration,
       memo: '',
       targetDate: formatDate(new Date()), // 今日の日付をデフォルトに
     });
     setIsCustomGenre(false);
   };
+
+  // 終了予定時間を計算
+  const endTime = calculateEndTime(formData.scheduledStartTime, formData.scheduledDuration);
 
   return (
     <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 mb-6">
@@ -167,21 +180,23 @@ export const AddTaskForm = () => {
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">開始時間</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">開始予定時間</label>
           <input
             type="time"
-            value={formData.startTime}
-            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+            value={formData.scheduledStartTime}
+            onChange={(e) => setFormData({ ...formData, scheduledStartTime: e.target.value })}
             className="form-input py-2"
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">終了時間</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">作業予定時間（分）</label>
           <input
-            type="time"
-            value={formData.endTime}
-            onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+            type="number"
+            value={formData.scheduledDuration}
+            onChange={(e) => setFormData({ ...formData, scheduledDuration: parseInt(e.target.value) || 60 })}
+            min="1"
+            max="1440"
             className="form-input py-2"
           />
         </div>

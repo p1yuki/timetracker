@@ -2,8 +2,8 @@ export interface Task {
   id: string;
   title: string;
   genre: string;
-  startTime: string;
-  endTime: string;
+  scheduledStartTime: string; // 開始予定時間
+  scheduledDuration: number; // 作業予定時間（分）
   status: 'pending' | 'in-progress' | 'completed';
   createdAt: Date;
   startedAt?: Date;
