@@ -51,6 +51,11 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isEditingGenre, setIsEditingGenre] = useState(false);
   const [editingGenre, setEditingGenre] = useState(task.genre);
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [editingStartTime, setEditingStartTime] = useState(task.scheduledStartTime);
+  const [editingDuration, setEditingDuration] = useState(task.scheduledDuration);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(task.title);
 
   const allGenres = getAllGenres();
 
@@ -79,6 +84,25 @@ export const TaskCard = ({ task }: TaskCardProps) => {
       updateTask(task.id, { genre: editingGenre });
     }
     setIsEditingGenre(false);
+  };
+
+  // 予定時間編集の保存
+  const handleScheduleSave = () => {
+    if (editingStartTime !== task.scheduledStartTime || editingDuration !== task.scheduledDuration) {
+      updateTask(task.id, { 
+        scheduledStartTime: editingStartTime, 
+        scheduledDuration: editingDuration 
+      });
+    }
+    setIsEditingSchedule(false);
+  };
+
+  // タスク名編集の保存
+  const handleTitleSave = () => {
+    if (editingTitle.trim() && editingTitle !== task.title) {
+      updateTask(task.id, { title: editingTitle.trim() });
+    }
+    setIsEditingTitle(false);
   };
 
   // 1行レイアウト用スタイル
@@ -131,13 +155,28 @@ export const TaskCard = ({ task }: TaskCardProps) => {
       style={{fontSize: '0.97rem'}}>
       {/* タイトル＋ジャンル（固定幅、ジャンルバッジ右端揃え） */}
       <div className="flex items-center min-w-0 w-[300px] max-w-[400px]" style={{flexShrink: 1}}>
-        <span
-          className={`font-semibold text-gray-900 ${getTitleFontSize(task.title)} overflow-hidden text-ellipsis whitespace-nowrap flex-1`}
-          style={{ minWidth: '60px', marginRight: '8px' }}
-          title={task.title}
-        >
-          {task.title}
-        </span>
+        {isEditingTitle ? (
+          <input
+            type="text"
+            value={editingTitle}
+            onChange={(e) => setEditingTitle(e.target.value)}
+            className={`font-semibold text-gray-900 ${getTitleFontSize(editingTitle)} border rounded px-1 py-0.5 flex-1 min-w-0`}
+            style={{ minWidth: '60px', marginRight: '8px' }}
+            onBlur={handleTitleSave}
+            onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+            maxLength={30}
+            autoFocus
+          />
+        ) : (
+          <span
+            className={`font-semibold text-gray-900 ${getTitleFontSize(task.title)} overflow-hidden text-ellipsis whitespace-nowrap flex-1 cursor-pointer hover:bg-gray-100 rounded px-1 py-0.5 transition-colors`}
+            style={{ minWidth: '60px', marginRight: '8px' }}
+            title={task.title}
+            onClick={() => setIsEditingTitle(true)}
+          >
+            {task.title}
+          </span>
+        )}
         <div className="flex items-center justify-end shrink-0">
           {isEditingGenre ? (
             <select
@@ -174,8 +213,45 @@ export const TaskCard = ({ task }: TaskCardProps) => {
       </div>
       {/* 予定時間（左揃え、より目立つ表示） */}
       <div className="flex flex-col items-start shrink-0 min-w-[80px]">
-        <span className="text-gray-600 text-xs font-medium">{task.scheduledStartTime}~{endTime}</span>
-        <span className="text-gray-500 text-xs">予定: {task.scheduledDuration}分</span>
+        {isEditingSchedule ? (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <input
+                type="time"
+                value={editingStartTime}
+                onChange={(e) => setEditingStartTime(e.target.value)}
+                className="text-xs border rounded px-1 py-0.5 w-20"
+                onBlur={handleScheduleSave}
+                onKeyDown={(e) => e.key === 'Enter' && handleScheduleSave()}
+              />
+              <span className="text-gray-400 text-xs">~</span>
+              <span className="text-gray-600 text-xs">{calculateEndTime(editingStartTime, editingDuration)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-500 text-xs">予定:</span>
+              <input
+                type="number"
+                value={editingDuration}
+                onChange={(e) => setEditingDuration(Number(e.target.value))}
+                className="text-xs border rounded px-1 py-0.5 w-12"
+                min="1"
+                max="480"
+                onBlur={handleScheduleSave}
+                onKeyDown={(e) => e.key === 'Enter' && handleScheduleSave()}
+              />
+              <span className="text-gray-500 text-xs">分</span>
+            </div>
+          </div>
+        ) : (
+          <div 
+            className="cursor-pointer hover:bg-gray-100 rounded px-1 py-0.5 transition-colors"
+            onClick={() => setIsEditingSchedule(true)}
+            title="クリックして編集"
+          >
+            <span className="text-gray-600 text-xs font-medium">{task.scheduledStartTime}~{endTime}</span>
+            <span className="text-gray-500 text-xs block">予定: {task.scheduledDuration}分</span>
+          </div>
+        )}
       </div>
       
       {/* 実際の開始・終了時間 */}
