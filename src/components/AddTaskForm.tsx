@@ -16,16 +16,6 @@ const getDefaultTimes = () => {
   };
 };
 
-// 開始時間と作業時間から終了時間を計算する関数
-const calculateEndTime = (startTime: string, durationMinutes: number): string => {
-  const [hours, minutes] = startTime.split(':').map(Number);
-  const startDate = new Date();
-  startDate.setHours(hours, minutes, 0, 0);
-  
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
-  return `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
-};
-
 // 日付をフォーマットする関数
 const formatDate = (date: Date) => {
   const year = date.getFullYear();

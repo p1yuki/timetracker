@@ -307,7 +307,7 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       carryOverTasksIfNeeded: () => {
-        const { tasks, selectedDate } = get();
+        const { tasks } = get();
         // 今日の日付
         const today = new Date();
         today.setHours(0,0,0,0);
