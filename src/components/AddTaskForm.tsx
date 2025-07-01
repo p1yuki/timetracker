@@ -4,7 +4,7 @@ import { useTaskStore } from '../store/taskStore';
 // 現在時刻と1時間後の時刻を取得する関数
 const getDefaultTimes = () => {
   const now = new Date();
-  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+  // const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000); // 未使用なので削除
   
   const formatTime = (date: Date) => {
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -91,9 +91,6 @@ export const AddTaskForm = () => {
     });
     setIsCustomGenre(false);
   };
-
-  // 終了予定時間を計算
-  const endTime = calculateEndTime(formData.scheduledStartTime, formData.scheduledDuration);
 
   return (
     <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 mb-6">

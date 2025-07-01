@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Play, Pause, Square, Trash2, Edit2 } from 'lucide-react';
+import { Play, Pause, Square, Trash2 } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { Task } from '../types';
 
