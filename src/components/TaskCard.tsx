@@ -53,7 +53,7 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   const [editingGenre, setEditingGenre] = useState(task.genre);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [editingStartTime, setEditingStartTime] = useState(task.scheduledStartTime);
-  const [editingDuration, setEditingDuration] = useState(task.scheduledDuration);
+  const [editingDuration, setEditingDuration] = useState(task.scheduledDuration.toString());
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState(task.title);
   const [isEditingActualStart, setIsEditingActualStart] = useState(false);
@@ -64,6 +64,21 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   const [editingActualTime, setEditingActualTime] = useState(task.totalTime ? secondsToMinutes(task.totalTime) : 0);
 
   const allGenres = getAllGenres();
+
+  // デバッグ用：編集状態の変化をログ出力
+  useEffect(() => {
+    console.log('isEditingSchedule changed:', isEditingSchedule, 'for task:', task.id);
+  }, [isEditingSchedule, task.id]);
+
+  // 編集モードに入った時に開始時間inputにフォーカス
+  useEffect(() => {
+    if (isEditingSchedule) {
+      const startTimeInput = document.querySelector(`input[type="time"]`) as HTMLInputElement;
+      if (startTimeInput) {
+        setTimeout(() => startTimeInput.focus(), 0);
+      }
+    }
+  }, [isEditingSchedule]);
 
   // リアルタイム経過時間の更新
   useEffect(() => {
@@ -94,12 +109,41 @@ export const TaskCard = ({ task }: TaskCardProps) => {
 
   // 予定時間編集の保存
   const handleScheduleSave = () => {
-    if (editingStartTime !== task.scheduledStartTime || editingDuration !== task.scheduledDuration) {
+    console.log('handleScheduleSave called for task:', task.id);
+    let val = parseInt(editingDuration);
+    if (isNaN(val) || val < 1) val = task.scheduledDuration;
+    setEditingDuration(val.toString());
+    
+    if (editingStartTime !== task.scheduledStartTime || val !== task.scheduledDuration) {
       updateTask(task.id, { 
         scheduledStartTime: editingStartTime, 
-        scheduledDuration: editingDuration 
+        scheduledDuration: val 
       });
     }
+    setIsEditingSchedule(false);
+  };
+
+  // 予定時間編集の確定（Enterキーまたは明示的な確定時）
+  const handleScheduleConfirm = () => {
+    console.log('handleScheduleConfirm called for task:', task.id);
+    let val = parseInt(editingDuration);
+    if (isNaN(val) || val < 1) val = task.scheduledDuration;
+    setEditingDuration(val.toString());
+    
+    if (editingStartTime !== task.scheduledStartTime || val !== task.scheduledDuration) {
+      updateTask(task.id, { 
+        scheduledStartTime: editingStartTime, 
+        scheduledDuration: val 
+      });
+    }
+    setIsEditingSchedule(false);
+  };
+
+  // 予定時間編集のキャンセル（フォーカスアウト時）
+  const handleScheduleCancel = () => {
+    console.log('handleScheduleCancel called for task:', task.id);
+    setEditingStartTime(task.scheduledStartTime);
+    setEditingDuration(task.scheduledDuration.toString());
     setIsEditingSchedule(false);
   };
 
@@ -289,24 +333,25 @@ export const TaskCard = ({ task }: TaskCardProps) => {
                 value={editingStartTime}
                 onChange={(e) => setEditingStartTime(e.target.value)}
                 className="text-xs border rounded px-1 py-0.5 w-20"
-                onKeyDown={(e) => e.key === 'Enter' && handleScheduleSave()}
-                onBlur={handleScheduleSave}
-                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleScheduleConfirm()}
+                onBlur={handleScheduleCancel}
+                onFocus={() => console.log('開始時間input focused for task:', task.id)}
               />
               <span className="text-gray-400 text-xs">~</span>
-              <span className="text-gray-600 text-xs">{calculateEndTime(editingStartTime, editingDuration)}</span>
+              <span className="text-gray-600 text-xs">{calculateEndTime(editingStartTime, task.scheduledDuration)}</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="text-gray-500 text-xs">予定:</span>
               <input
                 type="number"
                 value={editingDuration}
-                onChange={(e) => setEditingDuration(Number(e.target.value))}
+                onChange={(e) => setEditingDuration(e.target.value)}
                 className="text-xs border rounded px-1 py-0.5 w-12"
                 min="1"
                 max="480"
-                onKeyDown={(e) => e.key === 'Enter' && handleScheduleSave()}
-                onBlur={handleScheduleSave}
+                onKeyDown={(e) => e.key === 'Enter' && handleScheduleConfirm()}
+                onBlur={handleScheduleCancel}
+                onFocus={() => console.log('予定時間input focused for task:', task.id)}
               />
               <span className="text-gray-500 text-xs">分</span>
             </div>
@@ -314,7 +359,10 @@ export const TaskCard = ({ task }: TaskCardProps) => {
         ) : (
           <div 
             className="cursor-pointer hover:bg-gray-100 rounded px-1 py-0.5 transition-colors"
-            onClick={() => setIsEditingSchedule(true)}
+            onClick={() => {
+              console.log('予定時間編集クリック:', task.id);
+              setIsEditingSchedule(true);
+            }}
             title="クリックして編集"
           >
             <span className="text-gray-600 text-xs font-medium">{task.scheduledStartTime}~{endTime}</span>

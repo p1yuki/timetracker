@@ -31,7 +31,7 @@ export const AddTaskForm = () => {
     genre: 'ルーチン',
     customGenre: '',
     scheduledStartTime: '09:00',
-    scheduledDuration: 60,
+    scheduledDuration: '60', // string型に変更
     memo: '',
     targetDate: formatDate(new Date()), // 今日の日付をデフォルトに
   });
@@ -45,7 +45,7 @@ export const AddTaskForm = () => {
     setFormData(prev => ({
       ...prev,
       scheduledStartTime: defaultTimes.scheduledStartTime,
-      scheduledDuration: defaultTimes.scheduledDuration,
+      scheduledDuration: defaultTimes.scheduledDuration.toString(),
     }));
   }, []);
 
@@ -64,7 +64,7 @@ export const AddTaskForm = () => {
       title: formData.title,
       genre: finalGenre,
       scheduledStartTime: formData.scheduledStartTime,
-      scheduledDuration: formData.scheduledDuration,
+      scheduledDuration: parseInt(formData.scheduledDuration) || 60,
       memo: formData.memo,
     }, targetDate);
 
@@ -75,7 +75,7 @@ export const AddTaskForm = () => {
       genre: 'ルーチン',
       customGenre: '',
       scheduledStartTime: defaultTimes.scheduledStartTime,
-      scheduledDuration: defaultTimes.scheduledDuration,
+      scheduledDuration: defaultTimes.scheduledDuration.toString(),
       memo: '',
       targetDate: formatDate(new Date()), // 今日の日付をデフォルトに
     });
@@ -181,7 +181,12 @@ export const AddTaskForm = () => {
           <input
             type="number"
             value={formData.scheduledDuration}
-            onChange={(e) => setFormData({ ...formData, scheduledDuration: parseInt(e.target.value) || 60 })}
+            onChange={(e) => setFormData({ ...formData, scheduledDuration: e.target.value })}
+            onBlur={() => {
+              let val = parseInt(formData.scheduledDuration);
+              if (isNaN(val) || val < 1) val = 60;
+              setFormData({ ...formData, scheduledDuration: val.toString() });
+            }}
             min="1"
             max="1440"
             className="form-input py-2"
