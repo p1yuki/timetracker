@@ -60,6 +60,8 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   const [editingActualStart, setEditingActualStart] = useState(task.startedAt ? formatDateTime(new Date(task.startedAt)) : '');
   const [isEditingActualEnd, setIsEditingActualEnd] = useState(false);
   const [editingActualEnd, setEditingActualEnd] = useState(task.completedAt ? formatDateTime(new Date(task.completedAt)) : '');
+  const [isEditingActualTime, setIsEditingActualTime] = useState(false);
+  const [editingActualTime, setEditingActualTime] = useState(task.totalTime ? secondsToMinutes(task.totalTime) : 0);
 
   const allGenres = getAllGenres();
 
@@ -143,6 +145,14 @@ export const TaskCard = ({ task }: TaskCardProps) => {
     setIsEditingActualEnd(false);
   };
 
+  // 実績時間の保存
+  const handleActualTimeSave = () => {
+    if (!isNaN(editingActualTime) && editingActualTime !== task.totalTime) {
+      updateTask(task.id, { totalTime: editingActualTime * 60 });
+    }
+    setIsEditingActualTime(false);
+  };
+
   // 1行レイアウト用スタイル
   const getStatusColor = (status: Task['status']) => {
     switch (status) {
@@ -194,8 +204,19 @@ export const TaskCard = ({ task }: TaskCardProps) => {
   // 中断時間（分）
   const pausedMinutes = secondsToMinutes(task.totalPausedTime || 0);
 
+  // 現在時間が予定時間範囲内にあるかチェック
+  const isCurrentlyScheduled = (() => {
+    if (!task.scheduledStartTime || !task.scheduledDuration) return false;
+    const now = new Date();
+    const [startHour, startMin] = task.scheduledStartTime.split(':').map(Number);
+    const start = new Date(now);
+    start.setHours(startHour, startMin, 0, 0);
+    const end = new Date(start.getTime() + task.scheduledDuration * 60 * 1000);
+    return now >= start && now < end;
+  })();
+
   return (
-    <div className={`task-card flex items-center gap-2 px-3 py-2 min-h-0 ${getStatusColor(task.status)}`}
+    <div className={`task-card flex items-center gap-2 px-3 py-2 min-h-0 ${getStatusColor(task.status)} ${isCurrentlyScheduled ? 'ring-2 ring-red-400 bg-red-50/60 shadow-lg border-red-200' : ''}`}
       style={{fontSize: '0.97rem'}}>
       {/* タイトル＋ジャンル（固定幅、ジャンルバッジ右端揃え） */}
       <div className="flex items-center min-w-0 w-[300px] max-w-[400px]" style={{flexShrink: 1}}>
@@ -229,6 +250,7 @@ export const TaskCard = ({ task }: TaskCardProps) => {
               className="text-xs border rounded px-1 py-0.5 ml-0"
               onBlur={handleGenreSave}
               onKeyDown={(e) => e.key === 'Enter' && handleGenreSave()}
+              autoFocus
             >
               {allGenres.map((genre) => (
                 <option key={genre} value={genre}>
@@ -246,6 +268,8 @@ export const TaskCard = ({ task }: TaskCardProps) => {
                 filter: 'none',
               }}
               onClick={() => setIsEditingGenre(true)}
+              tabIndex={0}
+              onBlur={handleGenreSave}
             >
               {task.genre}
             </span>
@@ -265,8 +289,9 @@ export const TaskCard = ({ task }: TaskCardProps) => {
                 value={editingStartTime}
                 onChange={(e) => setEditingStartTime(e.target.value)}
                 className="text-xs border rounded px-1 py-0.5 w-20"
-                onBlur={handleScheduleSave}
                 onKeyDown={(e) => e.key === 'Enter' && handleScheduleSave()}
+                onBlur={handleScheduleSave}
+                autoFocus
               />
               <span className="text-gray-400 text-xs">~</span>
               <span className="text-gray-600 text-xs">{calculateEndTime(editingStartTime, editingDuration)}</span>
@@ -280,8 +305,8 @@ export const TaskCard = ({ task }: TaskCardProps) => {
                 className="text-xs border rounded px-1 py-0.5 w-12"
                 min="1"
                 max="480"
-                onBlur={handleScheduleSave}
                 onKeyDown={(e) => e.key === 'Enter' && handleScheduleSave()}
+                onBlur={handleScheduleSave}
               />
               <span className="text-gray-500 text-xs">分</span>
             </div>
@@ -378,8 +403,26 @@ export const TaskCard = ({ task }: TaskCardProps) => {
         )}
         {task.status === 'completed' && (
           <div className="flex items-center gap-2 text-xs">
-            {/* 実績時間の表示 */}
-            <span className="text-blue-600">実績: {actualDurationMinutes}分{timeDifferenceText}</span>
+            {/* 実績時間の表示・編集 */}
+            {isEditingActualTime ? (
+              <input
+                type="number"
+                value={editingActualTime}
+                min={0}
+                onChange={e => setEditingActualTime(Number(e.target.value))}
+                onBlur={handleActualTimeSave}
+                onKeyDown={e => e.key === 'Enter' && handleActualTimeSave()}
+                className="w-16 text-blue-600 border rounded px-1 py-0.5 text-xs"
+                autoFocus
+              />
+            ) : (
+              <span className="text-blue-600 cursor-pointer" onClick={() => {
+                setEditingActualTime(actualDurationMinutes);
+                setIsEditingActualTime(true);
+              }}>
+                実績: {actualDurationMinutes}分{timeDifferenceText}
+              </span>
+            )}
             {pausedMinutes > 0 && (
               <span className="text-yellow-600">（中断合計{pausedMinutes}分）</span>
             )}
