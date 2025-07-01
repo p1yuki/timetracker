@@ -67,11 +67,10 @@ export const TaskList = () => {
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">タスク一覧</h3>
-      </div>
-      
-      <div className="mb-4 text-sm text-gray-600">
-        タスク数: {sortedTasks.length}
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
+          <span>タスク一覧</span>
+          <span className="text-xs text-gray-400 font-normal ml-2">タスク数: {sortedTasks.length}</span>
+        </h3>
       </div>
       
       {sortedTasks.length === 0 ? (

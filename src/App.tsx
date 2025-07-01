@@ -11,7 +11,7 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-6 pt-32">
         <main>
           {/* タブナビゲーション */}
           <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-2xl">
